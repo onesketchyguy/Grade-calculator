@@ -40,7 +40,13 @@ void LoadJsonData(std::vector<Grade>& grades, std::string fileName = "file.json"
 	std::ifstream fs;
 	fs.open(fileName);
 
-	if (fs.is_open() == false) return;
+	if (fs.is_open() == false)
+	{
+		std::cout << "No grades file found." << std::endl;
+		return;
+	}
+
+	std::cout << "Found grades file. ";
 
 	while (fs.eof() == false)
 	{
@@ -64,7 +70,7 @@ void LoadJsonData(std::vector<Grade>& grades, std::string fileName = "file.json"
 
 	fs.close();
 
-	std::cout << "Found grades file, and grades have been loaded." << std::endl;
+	std::cout << "Grades loaded." << std::endl;
 }
 
 // REDUNDANT, but cool
@@ -76,9 +82,35 @@ Grade ReadGrade(json j)
 	};
 }
 
-void ClearExistingGrades(std::string fileName = "file.json")
+void ClearExistingGrades(std::vector<Grade>& grades, std::string fileName = "file.json")
 {
-	remove(fileName.c_str());
+	while (true)
+	{
+		std::string in;
+
+		system("cls");
+		std::cout << "Are you sure you want to clear all grades? This cannot be undone." <<
+			"\n(y/n)" << std::endl;
+
+		std::cin >> in; // Recieve input
+
+		if (in[0] == 'y')
+		{
+			// Delete the file itself
+			remove(fileName.c_str());
+
+			// Clear out the existing items
+			grades.clear();
+
+			std::cout << "Cleared." << std::endl;
+			break;
+		}
+		else if (in[0] == 'n')
+		{
+			std::cout << "Canceled." << std::endl;
+			break;
+		}
+	}
 }
 
 void DisplayExistingGrades(const std::vector<Grade>& grades)
@@ -86,11 +118,12 @@ void DisplayExistingGrades(const std::vector<Grade>& grades)
 	if (grades.size() > 0)
 	{
 		std::cout << "Grades:" << std::endl;
-		std::cout << "\t[GRADE] : [CREDITS]" << std::endl;
+		std::cout << "\t [GRADE] : [CREDITS]" << std::endl;
 		for (const auto& g : grades)
 		{
 			std::string space = g.percent < 100 ? "\t   " : "\t  ";
-			std::cout << std::setprecision(2) << std::fixed << space << g.percent << " : " << g.credits << "" << std::endl;
+			std::cout << std::setprecision(2) << std::fixed << space
+				<< g.percent << " : " << g.credits << "" << std::endl;
 		}
 
 		std::cout << std::endl << std::endl;
@@ -108,7 +141,7 @@ void CalculateGrade(const std::vector<Grade>& grades)
 	// Clear screen
 	std::system("cls");
 
-	int count = grades.size();
+	int count = static_cast<int>(grades.size());
 	float cgpa = 0;
 	float weightedGpa = 0;
 	int totalCredits = 0;
@@ -163,7 +196,7 @@ void CalculateGrade(const std::vector<Grade>& grades)
 	// Display all grades to the user in a nice format
 	std::cout << "Your CGPA = " << cgpa << std::endl;
 	std::cout << "Your 4.0 GPA = " << weightedGpa << std::endl;
-	std::cout << "Your Simple GPA = " << simpleGpa << std::flush;
+	std::cout << "Your Simple GPA = " << simpleGpa << std::endl;
 }
 
 void InputGrades(std::vector<Grade>& grades)
@@ -193,7 +226,9 @@ void InputGrades(std::vector<Grade>& grades)
 
 	while (true)
 	{
-		//std::system("cls");
+		std::system("cls");
+
+		DisplayExistingGrades(grades);
 
 		Grade g;
 		in = "";
@@ -201,7 +236,8 @@ void InputGrades(std::vector<Grade>& grades)
 		std::cout << "Please input grade, or type 'done' to finish." << std::endl;
 		std::cin >> in;
 
-		if (in == "done" || in == "DONE") {
+		if (in == "done" || in == "DONE")
+		{
 			break;
 		}
 
@@ -236,6 +272,8 @@ int main()
 	// validate that these grades are current, then
 	// ask for users grades, and credits for each grade (default 1)
 
+	system("Title Grade Calculator v1 - Forrest H. Lowe 2021");
+
 	std::vector<Grade> grades;
 	LoadJsonData(grades);
 
@@ -254,15 +292,14 @@ int main()
 		{
 		case 1:
 			InputGrades(grades);
+
+			CalculateGrade(grades);
 			break;
 		case 2:
 			CalculateGrade(grades);
 			break;
 		case 3:
-			ClearExistingGrades();
-			grades.clear();
-
-			std::cout << "Cleared." << std::endl;
+			ClearExistingGrades(grades);
 			break;
 		case 4:
 			applicationRunning = false;
