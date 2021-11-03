@@ -9,14 +9,21 @@ using json = nlohmann::json;
 
 const std::string directory = "file.json";
 
-struct Grade
+struct Class
 {
+	std::string name = "";
 	float percent = 100;
 	int credits = 1;
+	double cost = 0.0;
 };
 
+#define GRADE_NAME "name"
+#define GRADE_COST "cost"
+#define GRADE_PERCENT "percent"
+#define GRADE_CREDITS "credits"
+
 // write JSON to file
-void WriteToJson(std::vector<Grade>& grades, std::string fileName = "file.json")
+void WriteToJson(std::vector<Class>& grades, std::string fileName = "file.json")
 {
 	std::ofstream o(fileName);
 
@@ -24,10 +31,12 @@ void WriteToJson(std::vector<Grade>& grades, std::string fileName = "file.json")
 	{
 		json j;
 
-		j["credits"] = grade.credits;
-		j["percent"] = grade.percent;
+		j[GRADE_NAME] = grade.name;
+		j[GRADE_COST] = grade.cost;
+		j[GRADE_PERCENT] = grade.percent;
+		j[GRADE_CREDITS] = grade.credits;
 
-		std::cout << j << std::endl;
+		//std::cout << j << std::endl;
 		o << j << std::endl;
 	}
 
@@ -35,7 +44,7 @@ void WriteToJson(std::vector<Grade>& grades, std::string fileName = "file.json")
 }
 
 // read a JSON file
-void LoadJsonData(std::vector<Grade>& grades, std::string fileName = "file.json")
+void LoadJsonData(std::vector<Class>& grades, std::string fileName = "file.json")
 {
 	std::ifstream fs;
 	fs.open(fileName);
@@ -51,7 +60,7 @@ void LoadJsonData(std::vector<Grade>& grades, std::string fileName = "file.json"
 	while (fs.eof() == false)
 	{
 		std::string content;
-		Grade item;
+		Class item;
 
 		std::getline(fs, content);
 
@@ -59,8 +68,23 @@ void LoadJsonData(std::vector<Grade>& grades, std::string fileName = "file.json"
 		{
 			auto j = json::parse(content);
 
-			item.percent = j.at("percent");
-			item.credits = j.at("credits");
+			item.percent = j.at(GRADE_PERCENT);
+			item.credits = j.at(GRADE_CREDITS);
+
+			/*
+			* Use a try loop to access these since they are new additions
+			* Maintaining a try loop ensures that we can still support the old format
+			* of just grade percent and credits.
+			*/
+			try
+			{
+				item.name = j.at(GRADE_NAME);
+				item.cost = j.at(GRADE_COST);
+			}
+			catch (const std::exception& e)
+			{
+				// Do nothing if exception is thrown
+			}
 
 			grades.push_back(item);
 		}
@@ -73,16 +97,7 @@ void LoadJsonData(std::vector<Grade>& grades, std::string fileName = "file.json"
 	std::cout << "Grades loaded." << std::endl;
 }
 
-// REDUNDANT, but cool
-Grade ReadGrade(json j)
-{
-	return {
-		j["grades"].get<float>(),
-		j["credits"].get<int>()
-	};
-}
-
-void ClearExistingGrades(std::vector<Grade>& grades, std::string fileName = "file.json")
+void ClearExistingGrades(std::vector<Class>& grades, std::string fileName = "file.json")
 {
 	while (true)
 	{
@@ -113,24 +128,36 @@ void ClearExistingGrades(std::vector<Grade>& grades, std::string fileName = "fil
 	}
 }
 
-void DisplayExistingGrades(const std::vector<Grade>& grades)
+void DisplayExistingGrades(const std::vector<Class>& grades)
 {
 	if (grades.size() > 0)
 	{
 		std::cout << "Grades:" << std::endl;
-		std::cout << "\t [GRADE] : [CREDITS]" << std::endl;
+		std::cout << "\t [GRADE] : [CREDITS]\t[NAME]\t\t[COST]" << std::endl;
 		for (const auto& g : grades)
 		{
 			std::string space = g.percent < 100 ? "\t   " : "\t  ";
 			std::cout << std::setprecision(2) << std::fixed << space
-				<< g.percent << " : " << g.credits << "" << std::endl;
+				<< g.percent << " : " << g.credits;
+
+			if (g.name != "")
+			{
+				std::string tabs = "\t\t";
+				if (g.name.length() > 7)
+				{
+					tabs = "\t";
+				}
+				std::cout << "\t\t" << g.name << tabs << "(" << g.cost << ") ";
+			}
+
+			std::cout << std::endl;
 		}
 
 		std::cout << std::endl << std::endl;
 	}
 }
 
-void CalculateGrade(const std::vector<Grade>& grades)
+void CalculateGrade(const std::vector<Class>& grades)
 {
 	if (grades.size() == 0)
 	{
@@ -145,6 +172,7 @@ void CalculateGrade(const std::vector<Grade>& grades)
 	float cgpa = 0;
 	float weightedGpa = 0;
 	int totalCredits = 0;
+	double totalCost = 0.0;
 
 	DisplayExistingGrades(grades);
 
@@ -154,6 +182,8 @@ void CalculateGrade(const std::vector<Grade>& grades)
 
 		totalCredits += g.credits;
 		float fourPoint = (g.percent / 100) * g.credits;
+
+		totalCost += g.cost;
 
 		weightedGpa += fourPoint;
 	}
@@ -196,32 +226,50 @@ void CalculateGrade(const std::vector<Grade>& grades)
 	// Display all grades to the user in a nice format
 	std::cout << "Your CGPA = " << cgpa << std::endl;
 	std::cout << "Your 4.0 GPA = " << weightedGpa << std::endl;
-	std::cout << "Your Simple GPA = " << simpleGpa << std::endl;
+	std::cout << "Simple 4 GPA = " << simpleGpa << std::endl;
+
+	std::cout << "\nTotal credits: " << totalCredits << std::endl;
+	std::cout << "Total cost: (" << totalCost << ")" << std::endl;
 }
 
-void InputGrades(std::vector<Grade>& grades)
+void InputGrades(std::vector<Class>& grades)
 {
 	// Clear screen
 	std::system("cls");
 
 	int globalCredits = 0;
+	double globalCosts = 0.0;
 	std::string in;
 
 	DisplayExistingGrades(grades);
 
-	if (globalCredits == 0)
-	{
-		std::cout << "Are credits universal? Type number of credits or 'n' for no." << std::endl;
-		std::cin >> in;
+	std::cout << "Are credits universal? Input number of credits or 'n' for no." << std::endl;
+	std::cin >> in;
 
-		if (in[0] != 'n' && in[0] != 'N')
-		{
-			globalCredits = std::stoi(in);
-		}
-		else
-		{
-			globalCredits = -1;
-		}
+	if (in[0] != 'n' && in[0] != 'N')
+	{
+		// FIXME: Add validation before recieving credits
+
+		globalCredits = std::stoi(in);
+	}
+	else
+	{
+		globalCredits = -1;
+	}
+
+	in.clear();
+	std::cout << "Are costs universal? Input costs or 'n' for no." << std::endl;
+	std::cin >> in;
+
+	if (in[0] != 'n' && in[0] != 'N')
+	{
+		// FIXME: Add validation before recieving credits
+
+		globalCosts = std::stod(in);
+	}
+	else
+	{
+		globalCosts = -1;
 	}
 
 	while (true)
@@ -230,7 +278,7 @@ void InputGrades(std::vector<Grade>& grades)
 
 		DisplayExistingGrades(grades);
 
-		Grade g;
+		Class g;
 		in = "";
 
 		std::cout << "Please input grade, or type 'done' to finish." << std::endl;
@@ -241,14 +289,39 @@ void InputGrades(std::vector<Grade>& grades)
 			break;
 		}
 
+		// Recieve grade
+
+		// FIXME: Add validation before recieving grade percent
+
 		g.percent = std::stof(in);
 
-		in = "";
+		// Recieve class name
+		in.clear();
+		std::cout << "\nPlease input class name: ";
+		std::cin >> in;
 
+		g.name = in;
+
+		// Recieve costs paid
+		if (globalCosts < 0)
+		{
+			in.clear();
+			std::cout << "\nPlease input class costs: ";
+			std::cin >> in;
+
+			// FIXME: Add validation before recieving costs
+
+			g.cost = std::stod(in);
+		}
+
+		// Recieve credits
 		if (globalCredits <= 0)
 		{
-			std::cout << "Please input credits" << std::endl;
+			in.clear();
+			std::cout << "\nPlease input credits: ";
 			std::cin >> in;
+
+			// FIXME: Add validation before recieving credits
 
 			g.credits = std::stoi(in);
 		}
@@ -272,9 +345,9 @@ int main()
 	// validate that these grades are current, then
 	// ask for users grades, and credits for each grade (default 1)
 
-	system("Title Grade Calculator v1 - Forrest H. Lowe 2021");
+	system("Title Grade Calculator v2 - Forrest H. Lowe 2021");
 
-	std::vector<Grade> grades;
+	std::vector<Class> grades;
 	LoadJsonData(grades);
 
 	bool applicationRunning = true;
